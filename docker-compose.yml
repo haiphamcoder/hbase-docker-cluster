@@ -1,0 +1,96 @@
+services:
+  zookeeper-1:
+    image: zookeeper:3.9
+    container_name: zookeeper-1
+    hostname: zookeeper-1
+    restart: always
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOO_MY_ID=1
+      - ZOO_PORT=2181
+      - ZOO_SERVERS=server.1=zookeeper-1:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+    networks:
+      hbase-net:
+        ipv4_address: 172.16.0.10
+
+  zookeeper-2:
+    image: zookeeper:3.9
+    container_name: zookeeper-2
+    hostname: zookeeper-2
+    restart: always
+    ports:
+      - "2182:2181"
+    environment:
+      - ZOO_MY_ID=2
+      - ZOO_PORT=2181
+      - ZOO_SERVERS=server.1=zookeeper-1:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+    networks:
+      hbase-net:
+        ipv4_address: 172.16.0.11
+
+  zookeeper-3:
+    image: zookeeper:3.9
+    container_name: zookeeper-3
+    hostname: zookeeper-3
+    restart: always
+    ports:
+      - "2183:2181"
+    environment:
+      - ZOO_MY_ID=3
+      - ZOO_PORT=2181
+      - ZOO_SERVERS=server.1=zookeeper-1:2888:3888;2181 server.2=zookeeper-2:2888:3888;2181 server.3=zookeeper-3:2888:3888;2181
+    networks:
+      hbase-net:
+        ipv4_address: 172.16.0.12
+
+  hbase-master:
+    image: harisekhon/hbase:2.0
+    container_name: hbase-master
+    hostname: hbase-master
+    restart: always
+    ports:
+      - "16000:16000"
+      - "16010:16010"
+    environment:
+      - HBASE_MANAGES_ZK=false
+      - HBASE_ZOOKEEPER_QUORUM=zookeeper-1,zookeeper-2,zookeeper-3
+      - HBASE_ZOOKEEPER_PROPERTY_CLIENTPORT=2181
+      - HBASE_ZNODE_PARENT=/hbase-unsecure
+      - HBASE_HEAPSIZE=1024
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    networks:
+      hbase-net:
+        ipv4_address: 172.16.0.13
+
+  hbase-regionserver:
+    image: harisekhon/hbase:2.0
+    container_name: hbase-regionserver
+    hostname: hbase-regionserver
+    restart: always
+    ports:
+      - "16020:16020"
+      - "16030:16030"
+    environment:
+      - HBASE_MANAGES_ZK=false
+      - HBASE_ZOOKEEPER_QUORUM=zookeeper-1,zookeeper-2,zookeeper-3
+      - HBASE_ZOOKEEPER_PROPERTY_CLIENTPORT=2181
+      - HBASE_ZNODE_PARENT=/hbase-unsecure
+      - HBASE_MASTER=hbase-master:16000
+      - HBASE_HEAPSIZE=2048
+    depends_on:
+      - hbase-master
+    networks:
+      hbase-net:
+        ipv4_address: 172.16.0.14
+
+networks:
+  hbase-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
+          gateway: 172.16.0.1
